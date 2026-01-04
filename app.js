@@ -113,11 +113,15 @@ function button(label, onClick) {
   b.type = "button";
   b.textContent = label;
   b.addEventListener("click", () => {
-    playClick();
+    if (!state.muted) {
+      el.uiClick.currentTime = 0;
+      el.uiClick.play().catch(()=>{});
+    }
     onClick();
   });
   return b;
 }
+
 
 /* Typewriter */
 async function typewriteHTML(targetEl, html, speedMs = 12) {
