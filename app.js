@@ -72,23 +72,52 @@ function initAudio() {
   el.whoosh.volume = 0.55;
   el.unlock.volume = 0.65;
 
-  function tryPlayAmbience() {
-    if (state.muted) return;
-    el.ambience.play().catch(() => {});
-  }
-
+  // Mute toggle
   el.mute.addEventListener("click", () => {
     state.muted = !state.muted;
     el.mute.textContent = state.muted ? "🔇" : "🔊";
-    el.ambience.muted = state.muted;
-    el.uiClick.muted = state.muted;
-    el.whoosh.muted = state.muted;
-    el.unlock.muted = state.muted;
-    if (!state.muted) tryPlayAmbience();
+
+    [el.ambience, el.uiClick, el.whoosh, el.unlock].forEach(a => {
+      a.muted = state.muted;
+    });
+
+    if (!state.muted) {
+      el.ambience.play().catch(()=>{});
+    }
   });
 
-  window.addEventListener("pointerdown", () => tryPlayAmbience(), { once: true });
+  // ✅ iOS/Safari dahil "ses kilidi" kırma (prime)
+  const primeAudio = async () => {
+    if (state.muted) return;
+
+    const audios = [el.uiClick, el.whoosh, el.unlock, el.ambience];
+
+    // hepsini yüklemeye zorla
+    audios.forEach(a => { try { a.load(); } catch {} });
+
+    // click/whoosh/unlock: 0 volume ile 1 frame çal durdur (unlock)
+    for (const a of [el.uiClick, el.whoosh, el.unlock]) {
+      try {
+        const prevVol = a.volume;
+        a.volume = 0.0001;
+        await a.play();
+        a.pause();
+        a.currentTime = 0;
+        a.volume = prevVol;
+      } catch {}
+    }
+
+    // ambience: normal başlat
+    try {
+      await el.ambience.play();
+    } catch {}
+  };
+
+  // İlk gerçek kullanıcı etkileşimi
+  window.addEventListener("pointerdown", primeAudio, { once: true });
+  window.addEventListener("touchstart", primeAudio, { once: true });
 }
+
 
 /* overlays */
 function ensureGlitchOverlay() {
